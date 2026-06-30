@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CFG Optimizer Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <header>
+    <h1>⚙️ CFG Optimizer Dashboard</h1>
+    <p>Paste your C code on the left — see the optimized CFG on the right</p>
+  </header>
+
+  <div class="main">
+    <div class="panel left-panel">
+      <div class="panel-header">
+        <span>📄 Input C Code</span>
+        <button id="runBtn" onclick="runOptimizer()">▶ Run Optimizer</button>
+      </div>
+      <textarea id="codeInput" spellcheck="false" placeholder="// Paste your C code here...
+#include &lt;stdio.h&gt;
+
+int main() {
+    int a = 3 + 5;
+    int b = 10 * 2;
+    int c = a + b;
+    int d = 99;
+    printf(&quot;Result: %d\n&quot;, c);
+    return 0;
+    int dead = 42;
+}"></textarea>
+      <div class="panel-footer">
+        <button class="secondary" onclick="clearAll()">🗑 Clear</button>
+        <button class="secondary" onclick="loadExample()">📋 Load Example</button>
+        <span id="statusMsg"></span>
+      </div>
+    </div>
+
+    <div class="panel right-panel">
+      <div class="panel-header">
+        <span>📊 Optimization Results</span>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('before', this)">CFG Before</button>
+          <button class="tab" onclick="switchTab('after', this)">CFG After</button>
+          <button class="tab" onclick="switchTab('summary', this)">Summary</button>
+          <button class="tab" onclick="switchTab('code', this)">Optimized Code</button>
+          <button class="tab" onclick="switchTab('terminal', this)">Terminal</button>
+        </div>
+      </div>
+
+      <div id="loader" class="loader hidden">
+        <div class="spinner"></div>
+        <p>Running optimizer...</p>
+      </div>
+
+      <div id="tab-before" class="tab-content active img-panel">
+        <p class="placeholder">Run the optimizer to see the CFG Before PNG.</p>
+      </div>
+      <div id="tab-after" class="tab-content img-panel">
+        <p class="placeholder">Run the optimizer to see the CFG After PNG.</p>
+      </div>
+      <div id="tab-summary" class="tab-content img-panel">
+        <p class="placeholder">Run the optimizer to see the Summary PNG.</p>
+      </div>
+      <div id="tab-code" class="tab-content">
+        <pre id="optimizedCode" class="placeholder">Run the optimizer to see optimized C code.</pre>
+      </div>
+      <div id="tab-terminal" class="tab-content">
+        <pre id="terminalOut" class="placeholder">Terminal output will appear here.</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(name, btn) {
+      document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.getElementById("tab-" + name).classList.add("active");
+      if (btn) btn.classList.add("active");
+    }
+
+    async function runOptimizer() {
+      const code = document.getElementById("codeInput").value;
+      if (!code.trim()) { setStatus("⚠ Please paste some C code first.", "warn"); return; }
+      setStatus("⏳ Running...", "info");
+      document.getElementById("loader").classList.remove("hidden");
+      document.getElementById("runBtn").disabled = true;
+
+      try {
+        const res = await fetch("/optimize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.error) { setStatus("❌ " + data.error, "error"); return; }
+        const ts = Date.now();
+        const functions = data.functions || {};
+
+        const beforeDiv = document.getElementById("tab-before");
+        beforeDiv.innerHTML = "";
+        for (const [func, pngs] of Object.entries(functions)) {
+          if (pngs.before) {
+            beforeDiv.innerHTML += `<h3 style="color:#89b4fa;margin:12px 0 4px;font-family:monospace">${func}()</h3><img src="${pngs.before}?t=${ts}" alt="CFG Before ${func}" style="max-width:100%;border:1px solid #444;border-radius:6px;margin-bottom:18px;display:block"/>`;
+          }
+        }
+        if (!beforeDiv.innerHTML) beforeDiv.innerHTML = `<p class="placeholder">CFG Before PNG not generated.</p>`;
+
+        const afterDiv = document.getElementById("tab-after");
+        afterDiv.innerHTML = "";
+        for (const [func, pngs] of Object.entries(functions)) {
+          if (pngs.after) {
+            afterDiv.innerHTML += `<h3 style="color:#a6e3a1;margin:12px 0 4px;font-family:monospace">${func}()</h3><img src="${pngs.after}?t=${ts}" alt="CFG After ${func}" style="max-width:100%;border:1px solid #444;border-radius:6px;margin-bottom:18px;display:block"/>`;
+          }
+        }
+        if (!afterDiv.innerHTML) afterDiv.innerHTML = `<p class="placeholder">CFG After PNG not generated.</p>`;
+
+        const summDiv = document.getElementById("tab-summary");
+        summDiv.innerHTML = "";
+        for (const [func, pngs] of Object.entries(functions)) {
+          if (pngs.summary) {
+            summDiv.innerHTML += `<h3 style="color:#f9e2af;margin:12px 0 4px;font-family:monospace">${func}()</h3><img src="${pngs.summary}?t=${ts}" alt="Summary ${func}" style="max-width:100%;border:1px solid #444;border-radius:6px;margin-bottom:18px;display:block"/>`;
+          }
+        }
+        if (!summDiv.innerHTML) summDiv.innerHTML = `<p class="placeholder">Summary PNG not generated.</p>`;
+
+        document.getElementById("optimizedCode").textContent = data.optimized_code;
+        document.getElementById("terminalOut").textContent = data.terminal;
+        setStatus("✅ Done! (" + Object.keys(functions).length + " function(s))", "ok");
+
+        document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.getElementById("tab-before").classList.add("active");
+        document.querySelectorAll(".tab")[0].classList.add("active");
+      } catch(e) {
+        setStatus("❌ Network error: " + e.message, "error");
+      } finally {
+        document.getElementById("loader").classList.add("hidden");
+        document.getElementById("runBtn").disabled = false;
+      }
+    }
+
+    function clearAll() {
+      document.getElementById("codeInput").value = "";
+      ["before","after","summary"].forEach(t => {
+        document.getElementById("tab-"+t).innerHTML = `<p class="placeholder">Run the optimizer to see results.</p>`;
+      });
+      document.getElementById("optimizedCode").textContent = "Run the optimizer to see optimized C code.";
+      document.getElementById("terminalOut").textContent = "Terminal output will appear here.";
+      setStatus("", "");
+    }
+
+    function loadExample() {
+      document.getElementById("codeInput").value = `#include <stdio.h>\n\nint main() {\n    int a = 3 + 5;\n    int b = 10 * 2;\n    int c = a + b;\n    int d = 99;\n    printf("Result: %d\\n", c);\n    return 0;\n    int dead = 42;\n}`;
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById("statusMsg");
+      el.textContent = msg;
+      el.className = type;
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.ctrlKey && e.key === "Enter") runOptimizer();
+    });
+  </script>
+</body>
+</html>
