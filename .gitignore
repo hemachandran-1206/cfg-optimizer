@@ -1,0 +1,36 @@
+# Build artifacts
+*/build/CMakeFiles/
+*/build/CMakeCache.txt
+*/build/Makefile
+*/build/cmake_install.cmake
+*/build/*.o
+*/build/*.obj
+
+# Compiled binaries (keep source, ignore large executables)
+*/build/cfg_extractor
+*/cfg_extractor
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Generated outputs (recreate on target machine)
+*.png
+*.dot
+*_optimized.c
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
