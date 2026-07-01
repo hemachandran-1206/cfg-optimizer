@@ -11,7 +11,7 @@
 3. [Phase 1 — CFG Extraction](#phase-1--cfg-extraction)
 4. [Phase 2 — Data-Flow Analysis](#phase-2--data-flow-analysis)
 5. [Phase 3 — Optimizations](#phase-3--optimizations)
-6. [Dashboard](#dashboard)
+6. [Dashboard](#dashboard) 
 7. [Build & Run](#build--run)
 8. [Project Structure](#project-structure)
 9. [Contributors](#contributors)
